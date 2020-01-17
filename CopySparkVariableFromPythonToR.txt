@@ -1,0 +1,35 @@
+%md
+# Databricks / Spark
+## How to copy variable content from pyspark context to r context.
+
+%sql 
+
+CREATE DATABASE IF NOT EXISTS SharedWorkingTables;
+
+USE SharedWorkingTables;
+
+CREATE TABLE IF NOT EXISTS SharedValues
+(
+  key string,
+  value string
+)
+USING DELTA
+PARTITIONED BY (key)
+LOCATION '/tmp/SharedValues';
+
+%python
+
+spark.sql("USE SharedWorkingTables")
+
+spark.sql("DELETE FROM SharedValues WHERE key = 'some_key'")
+spark.sql("INSERT INTO SharedValues VALUES ('some_key', '{0}')".format(some_value))
+
+%r
+library(SparkR)
+library(dplyr)
+
+sharedValues <- read.df(path = "/tmp/SharedValues", source = "delta")
+
+some_key_DataFrame <- sharedValues %>% SparkR::filter("key = 'some_key'")
+
+some_value <- head(some_key_DataFrame)$value
